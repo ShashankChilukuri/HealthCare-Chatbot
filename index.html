@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>HealthCare ChatBot</title>
+  <style>
+    :root{
+      --bg:#0b1020;
+      --card:#121935;
+      --accent:#4fd1c5;
+      --accent-2:#80e3db;
+      --text:#e8eefc;
+      --muted:#a9b4d6;
+      --user:#2a6ef5;
+      --bot:#2a365e;
+      --error:#ff6b6b;
+      --ring: rgba(79,209,197,.35);
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; background: radial-gradient(1200px 800px at 80% -10%, rgba(79,209,197,.15), transparent 60%),
+                                 radial-gradient(1000px 700px at -10% 20%, rgba(42,110,245,.12), transparent 60%),
+                                 var(--bg);
+      color:var(--text); font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      display:flex; align-items:center; justify-content:center; padding:20px;
+    }
+
+    .app{
+      width: min(1100px, 100%);
+      display:grid; grid-template-rows: auto 1fr auto; gap:14px;
+    }
+
+    header{
+      display:flex; align-items:center; gap:12px;
+      padding:14px 16px; backdrop-filter:saturate(140%) blur(8px);
+      border:1px solid rgba(255,255,255,.06); border-radius:16px;
+      background:linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
+      box-shadow: 0 10px 30px rgba(0,0,0,.25), inset 0 1px 0 rgba(255,255,255,.08);
+    }
+    .logo{
+      width:40px; height:40px; border-radius:12px; display:grid; place-items:center;
+      background: conic-gradient(from 210deg, var(--accent), var(--accent-2));
+      color:#06221f; font-weight:900; letter-spacing:.5px;
+      box-shadow: 0 10px 20px var(--ring);
+    }
+    header h1{margin:0; font-size:1.1rem; font-weight:700}
+    header p{margin:0; color:var(--muted); font-size:.9rem}
+    .spacer{flex:1}
+
+    .chat{
+      position:relative;
+      height:70vh; min-height:420px; max-height:72vh;
+      border-radius:18px; border:1px solid rgba(255,255,255,.06);
+      background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02));
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.06), 0 20px 50px rgba(0,0,0,.25);
+      padding:18px; overflow:auto;
+    }
+
+    .msg{display:flex; gap:10px; margin:14px 0; align-items:flex-end}
+    .avatar{width:34px; height:34px; border-radius:10px; background:var(--bot); display:grid; place-items:center; font-size:.9rem}
+    .msg.user .avatar{background:var(--user)}
+
+    .bubble{
+      max-width: 78%; padding:12px 14px; border-radius:14px; line-height:1.45; font-size:.98rem;
+      background:var(--card); border:1px solid rgba(255,255,255,.08);
+      box-shadow: 0 6px 18px rgba(0,0,0,.25);
+      position:relative;
+      white-space:pre-wrap; word-wrap:break-word; overflow-wrap: anywhere;
+    }
+    .msg.user .bubble{background:rgba(42,110,245,.16); border-color: rgba(42,110,245,.35)}
+    .msg.bot .bubble{background:rgba(79,209,197,.12); border-color: var(--ring)}
+
+    .time{font-size:.75rem; color:var(--muted); margin:0 4px}
+
+    .typing{
+      display:inline-flex; gap:6px; align-items:center;
+    }
+    .dot{width:6px; height:6px; border-radius:50%; background:var(--muted); opacity:.7; animation: blink 1.2s infinite}
+    .dot:nth-child(2){animation-delay:.2s}
+    .dot:nth-child(3){animation-delay:.4s}
+    @keyframes blink{0%,80%,100%{opacity:.2} 40%{opacity:1}}
+
+    form.input{
+      display:flex; gap:10px; align-items:center; padding:10px; background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02));
+      border:1px solid rgba(255,255,255,.06); border-radius:16px;
+    }
+    textarea{
+      flex:1; resize:none; min-height:48px; max-height:160px; padding:12px 14px; border-radius:12px; border:1px solid rgba(255,255,255,.08);
+      background: #0f1730; color:var(--text); font-size:1rem; line-height:1.35;
+      outline: none;
+    }
+    textarea::placeholder{color:#8fa2d9}
+
+    button{
+      height:48px; padding:0 16px; border:none; border-radius:12px; cursor:pointer; font-weight:700;
+      background: linear-gradient(180deg, var(--accent), var(--accent-2)); color:#052725;
+      box-shadow: 0 8px 20px var(--ring);
+    }
+    button:disabled{opacity:.6; cursor:not-allowed; box-shadow:none}
+
+    .hint{font-size:.85rem; color:var(--muted); text-align:center; margin-top:6px}
+    .err{color:var(--error)}
+
+    /* Small screens */
+    @media (max-width: 640px){
+      .bubble{max-width: 86%}
+      .chat{height: 68vh}
+      header h1{font-size:1rem}
+    }
+  </style>
+</head>
+<body>
+  <main class="app" role="application" aria-label="Healthcare Chatbot">
+    <header>
+      <div class="logo" aria-hidden="true">HC</div>
+      <div>
+        <h1>HealthCare ChatBot</h1>
+        <p>Your AI assistant for quick health info (not medical advice).</p>
+      </div>
+      <div class="spacer"></div>
+    </header>
+
+    <section id="chat" class="chat" aria-live="polite" aria-atomic="false"></section>
+
+    <form id="form" class="input" autocomplete="off">
+      <textarea id="message" rows="1" placeholder="Describe symptoms, ask a health question…" aria-label="Message"></textarea>
+      <button id="send" type="submit" aria-label="Send message">Send ↵</button>
+    </form>
+    <div class="hint">Press <kbd>Enter</kbd> to send • Press <kbd>Shift + Enter</kbd> for a new line</div>
+  </main>
+
+  <script>
+    const chat = document.getElementById('chat');
+    const form = document.getElementById('form');
+    const input = document.getElementById('message');
+    const sendBtn = document.getElementById('send');
+
+    // Helpers
+    function timeNow(){
+      const d = new Date();
+      return d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+    }
+    function el(tag, cls, html){
+      const e = document.createElement(tag);
+      if(cls) e.className = cls;
+      if(html!==undefined) e.innerHTML = html;
+      return e;
+    }
+    function scrollBottom(){ chat.scrollTo({top: chat.scrollHeight, behavior: 'smooth'}); }
+
+    function addMessage(role, text){
+      const row = el('div', `msg ${role}`);
+      const avatar = el('div','avatar', role === 'user' ? '🧑' : '🤖');
+      const bubble = el('div','bubble');
+      bubble.textContent = text;
+      const stamp = el('span','time', timeNow());
+      row.appendChild(avatar);
+      const col = el('div');
+      col.appendChild(bubble); col.appendChild(stamp);
+      row.appendChild(col);
+      chat.appendChild(row);
+      scrollBottom();
+      return row;
+    }
+
+    function addTyping(){
+      const row = el('div','msg bot');
+      const avatar = el('div','avatar','🤖');
+      const bubble = el('div','bubble');
+      const dots = el('div','typing');
+      dots.appendChild(el('span','dot'));
+      dots.appendChild(el('span','dot'));
+      dots.appendChild(el('span','dot'));
+      bubble.appendChild(dots);
+      const stamp = el('span','time', 'typing…');
+      row.appendChild(avatar);
+      const col = el('div');
+      col.appendChild(bubble); col.appendChild(stamp);
+      row.appendChild(col);
+      chat.appendChild(row);
+      scrollBottom();
+      return row;
+    }
+
+    async function sendMessage(text){
+      try{
+        sendBtn.disabled = true;
+        input.disabled = true;
+
+        addMessage('user', text);
+        const typingRow = addTyping();
+
+        const res = await fetch('/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: text })
+        });
+
+        const data = await res.json();
+        typingRow.remove();
+
+        if(!res.ok){
+          addMessage('bot', `⚠️ Error: ${data.error || res.statusText}`);
+          return;
+        }
+
+        addMessage('bot', data.bot || 'Sorry, I did not understand.');
+      }catch(err){
+        addMessage('bot', `⚠️ Network error. Please try again.`);
+        console.error(err);
+      }finally{
+        sendBtn.disabled = false;
+        input.disabled = false;
+        input.value = '';
+        input.focus();
+      }
+    }
+
+    // Autosize textarea
+    function autosize(){
+      input.style.height = 'auto';
+      input.style.height = Math.min(160, input.scrollHeight) + 'px';
+    }
+    input.addEventListener('input', autosize);
+    autosize();
+
+    // Form submit
+    form.addEventListener('submit', (e)=>{
+      e.preventDefault();
+      const text = input.value.trim();
+      if(!text) return;
+      sendMessage(text);
+    });
+
+    // Enter to send, Shift+Enter newline
+    input.addEventListener('keydown', (e)=>{
+      if(e.key === 'Enter' && !e.shiftKey){
+        e.preventDefault();
+        form.requestSubmit();
+      }
+    });
+
+    // Greet message
+    addMessage('bot', 'Hello! I\'m your HealthCare assistant. Describe your symptoms or ask about medications, tests, diet, or general health. (This is not a substitute for professional medical advice.)');
+  </script>
+</body>
+</html>
